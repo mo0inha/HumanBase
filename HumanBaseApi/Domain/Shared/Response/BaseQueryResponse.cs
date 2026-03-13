@@ -1,0 +1,36 @@
+﻿namespace Domain.Shared.Response;
+
+public class BaseQueryResponse<T>
+{
+    public T Data { get; set; }
+    public string Search { get; set; }
+    public int CurrentPage { get; set; }
+    public decimal PageCount { get; set; }
+    public int PageSize { get; set; }
+    public bool HasNextPage { get; set; }
+    public bool HasPreviousPage { get; set; }
+    public bool IsPaginated { get; set; }
+
+    public BaseQueryResponse(T data)
+    {
+        Data = data;
+    }
+
+    private BaseQueryResponse(
+        string search,
+        int currentPage,
+        decimal pageCount,
+        int pageSize,
+        bool hasNextPage,
+        bool hasPreviousPage,
+        bool isPaginated)
+    {
+        Search = search;
+        CurrentPage = currentPage;
+        PageCount = pageCount;
+        PageSize = pageSize;
+        HasNextPage = hasNextPage;
+        HasPreviousPage = hasPreviousPage;
+        IsPaginated = isPaginated;
+    }
+}
