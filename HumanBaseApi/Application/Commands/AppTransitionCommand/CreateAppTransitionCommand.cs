@@ -31,7 +31,7 @@ namespace Application.Commands.TransitionCommand
                 _response.AddErrorNotExist<Category>();
             }
 
-            if (_person.BirthDay > DateTime.Today.AddYears(-18) && request.TypeFinancial != ETypeFinancial.Expense)
+            if (_person.BirthDate > DateTime.Today.AddYears(-18) && request.TypeFinancial != ETypeFinancial.Expense)
             {
                 _response.AddError("For users under 18 years of age, only expenses are accepted.");
             }
