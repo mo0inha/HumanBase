@@ -23,17 +23,17 @@ namespace Application.Commands.TransitionCommand
 
             if (_person == null)
             {
-                _response.AddError("Pessoa não encontrada.");
+                _response.AddErrorNotExist<Person>();
             }
 
             if (_category == null)
             {
-                _response.AddError("Categoria não encontrada.");
+                _response.AddErrorNotExist<Category>();
             }
 
-            if (_person.BirthDate > DateTime.Today.AddYears(-18) && request.TypeFinancial != ETypeFinancial.Expense)
+            if (_person.BirthDay > DateTime.Today.AddYears(-18) && request.TypeFinancial != ETypeFinancial.Expense)
             {
-                _response.AddError("Para usuarios menores de 18 anos apenas despesas são aceitas");
+                _response.AddError("For users under 18 years of age, only expenses are accepted.");
             }
 
         }

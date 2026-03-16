@@ -8,7 +8,7 @@ namespace Application.Validator
         public CreatePersonValidator()
         {
             RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
-            RuleFor(x => x.BirthDay).NotEmpty().LessThan(DateTime.Now).GreaterThan(DateTime.MinValue);
+            RuleFor(x => x.BirthDate).NotEmpty().LessThan(DateTime.Now).GreaterThan(DateTime.UtcNow.Date.AddYears(-150));
         }
     }
 }

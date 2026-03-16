@@ -17,6 +17,24 @@
             Errors.Add(error);
         }
 
+        public void AddErrorNotExist<T>()
+        {
+            Success = false;
+
+            var entityName = typeof(T).Name;
+
+            Errors.Add($"{entityName} does not exist.");
+        }
+
+        public void AddErrorAlreadyExist<T>()
+        {
+            Success = false;
+
+            var entityName = typeof(T).Name;
+
+            Errors.Add($"{entityName} already exists.");
+        }
+
         public void SetError(string message, int statusCode)
         {
             Success = false;

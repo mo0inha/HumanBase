@@ -18,6 +18,8 @@ namespace Application.Query.AppTransactionQuery
         {
             var filter = FilterBuilder.New<AppTransaction>();
 
+            filter = filter.And(x => !x.IsDeleted);
+
             if (!string.IsNullOrEmpty(request.Description)) filter = filter.And(x => x.Description.Contains(request.Description));
 
             var query = _repository.AsQueryable<AppTransaction>().Where(filter);

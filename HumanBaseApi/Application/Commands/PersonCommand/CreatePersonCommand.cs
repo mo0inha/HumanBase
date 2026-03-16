@@ -18,13 +18,13 @@ namespace Application.Commands.PersonCommand
 
             if (person != null && person.Name == request.Name)
             {
-                _response.AddError("Já existe uma pessoa com esse nome.");
+                _response.AddErrorAlreadyExist<Person>();
             }
         }
 
         protected async override Task<Person> Changes(CreatePersonRequest request)
         {
-            var person = new Person(request.Name, request.BirthDay);
+            var person = new Person(request.Name, DateTime.SpecifyKind(request.BirthDate, DateTimeKind.Utc));
 
             await _repository.AddAsync(person);
 

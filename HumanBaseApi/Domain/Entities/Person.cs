@@ -5,13 +5,13 @@ namespace Domain.Entities
     public class Person : BaseEntity
     {
         public Person() { }
-        public Person(string name, DateTime birthDate)
+        public Person(string name, DateTimeOffset birthDate)
         {
             Name = name;
             BirthDate = birthDate;
         }
 
         public string Name { get; set; }
-        public DateTime BirthDate { get; set; }
+        public DateTimeOffset BirthDate { get; set; }
     }
 }

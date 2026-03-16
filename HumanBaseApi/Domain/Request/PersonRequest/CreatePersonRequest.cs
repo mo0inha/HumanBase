@@ -6,6 +6,6 @@ namespace Domain.Request.PersonRequest
     public class CreatePersonRequest : BaseRequest<CreatePersonResponse>
     {
         public string Name { get; set; }
-        public DateTime BirthDay { get; set; }
+        public DateTime BirthDate { get; set; }
     }
 }

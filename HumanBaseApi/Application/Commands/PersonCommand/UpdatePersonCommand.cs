@@ -19,7 +19,7 @@ namespace Application.Commands.PersonCommand
 
             if (_person == null)
             {
-                _response.AddError("");
+                _response.AddErrorNotExist<Person>();
                 return;
             }
         }

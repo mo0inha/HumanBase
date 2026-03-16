@@ -18,6 +18,8 @@ namespace Application.Query.PersonQuery
         {
             var filter = FilterBuilder.New<Person>();
 
+            filter = filter.And(x => !x.IsDeleted);
+
             if (!string.IsNullOrEmpty(request.Name)) filter = filter.And(x => x.Name.Contains(request.Name));
 
             var query = _repository.AsQueryable<Person>().Where(filter);
@@ -28,6 +30,7 @@ namespace Application.Query.PersonQuery
             {
                 x.Id,
                 x.Name,
+                x.BirthDate,
                 x.IsActive,
                 x.CreatedAt,
                 x.UpdatedAt
