@@ -3,6 +3,7 @@ using Application.Shared.Interfaces;
 using Domain.Entities;
 using Domain.Request.PersonRequest;
 using Domain.Response.PersonResonse;
+using Microsoft.EntityFrameworkCore;
 
 namespace Application.Commands.PersonCommand
 {
@@ -28,7 +29,20 @@ namespace Application.Commands.PersonCommand
         {
             _person.SetIsDeleted();
 
+            var appTransactions = await _repository.AsQueryable<AppTransaction>(x => x.PersonId == _person.Id).ToListAsync();
+
+            if (appTransactions.Any() == true)
+            {
+                foreach (var appTransaction in appTransactions)
+                {
+                    appTransaction.SetIsDeleted();
+                }
+            }
+
+
             return _person;
         }
+
+
     }
 }

@@ -20,22 +20,26 @@ namespace Application.Query.CategoryQuery
 
             if (!string.IsNullOrEmpty(request.Description)) filter = filter.And(x => x.Description.Contains(request.Description));
 
-            int sumRecords = await _repository.AsQueryable<Category>().Where(filter).CountAsync(cancellationToken);
+            var query = _repository.AsQueryable<Category>().Where(filter);
 
-            var result = _repository.AsQueryable<Category>().Where(filter)
-                .Select(x => new
-                {
-                    x.Id,
-                    x.Description,
-                    x.TypeFinancial,
-                    x.IsActive,
-                    x.CreatedAt,
-                    x.UpdatedAt
-                }).OrderByDescending(x => x.CreatedAt).Skip(skip).Take(request.GetNumber()).ToListAsync(cancellationToken);
+            int totalRecords = await query.CountAsync(cancellationToken);
 
-            var response = new GetCategoryResponse { Result = new BaseQueryResponse<IEnumerable<object>>(result.Result) };
+            var result = await query.Select(x => new
+            {
+                x.Id,
+                x.Description,
+                x.TypeFinancial,
+                x.IsActive,
+                x.CreatedAt,
+                x.UpdatedAt
+            }).OrderByDescending(x => x.CreatedAt).Skip(skip).Take(request.GetNumber()).ToListAsync(cancellationToken);
 
-            return await Task.FromResult(response);
+            var response = new GetCategoryResponse
+            {
+                Result = BaseQueryResponse<object>.CreatePaginated(result.Cast<object>(), totalRecords, request.GetPage(), request.GetNumber(), request.Description)
+            };
+
+            return response;
         }
     }
 }

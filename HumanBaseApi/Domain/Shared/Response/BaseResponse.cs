@@ -7,9 +7,6 @@
         public int StatusCode { get; set; }
         public Guid? Id { get; set; }
 
-        public decimal TotalPages { get; set; }
-        public int TotalCount { get; set; }
-
         public List<string> Errors { get; private set; } = new List<string>();
 
         public BaseResponse() { }
