@@ -29,7 +29,7 @@ namespace Application.Commands.PersonCommand
         {
             _person.SetIsDeleted();
 
-            var appTransactions = await _repository.AsQueryable<AppTransaction>(x => x.PersonId == _person.Id).ToListAsync();
+            var appTransactions = await _repository.AsQueryable<AppTransaction>().Where(x => x.PersonId == _person.Id).ToListAsync();
 
             if (appTransactions.Any() == true)
             {
