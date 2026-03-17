@@ -35,6 +35,7 @@ import {
   validatePositiveNumber,
   validateRequired,
 } from "./lib/validation";
+import { TypeFinancial } from "./types/type-financial";
 import { StatusBadge } from "./components/ui/status-badge";
 import { handleApi } from "./lib/handle-api";
 import {
@@ -49,6 +50,20 @@ import {
   TransactionListProvider,
   useTransactionList,
 } from "./contexts/transaction-list-context";
+
+function formatTypeFinancial(typeFinancial: TypeFinancial) {
+  switch (typeFinancial) {
+    case TypeFinancial.Income:
+      return "Income";
+    case TypeFinancial.Expense:
+      return "Expense";
+    case TypeFinancial.IncomeExpense:
+      return "IncomeExpense";
+    case TypeFinancial.Default:
+    default:
+      return "Default";
+  }
+}
 
 export function App() {
   return (
@@ -288,9 +303,13 @@ function PersonSection() {
 
 function CategoriesSection() {
   const [newCategoryDesc, setNewCategoryDesc] = React.useState("");
+  const [newCategoryTypeFinancial, setNewCategoryTypeFinancial] =
+    React.useState<TypeFinancial | null>(null);
   const [categoryDescError, setCategoryDescError] = React.useState<
     string | null
   >(null);
+  const [categoryTypeFinancialError, setCategoryTypeFinancialError] =
+    React.useState<string | null>(null);
 
   const { categories, refresh, invalidate } = useCategoryList();
 
@@ -298,10 +317,14 @@ function CategoriesSection() {
     const descResult = validateRequired(newCategoryDesc, "Description", {
       maxLength: 160,
     });
+    const typeFinancialValid = newCategoryTypeFinancial !== null;
 
     setCategoryDescError(descResult.valid ? null : descResult.message ?? null);
+    setCategoryTypeFinancialError(
+      typeFinancialValid ? null : "Type financial is required."
+    );
 
-    if (!descResult.valid) {
+    if (!descResult.valid || !typeFinancialValid) {
       toast.error(
         "Please fix the highlighted fields before creating a category."
       );
@@ -322,7 +345,7 @@ function CategoriesSection() {
     const data = await handleApi(
       api.post("Category", {
         description: sanitizeString(newCategoryDesc),
-        typeFinancial: 1,
+        typeFinancial: newCategoryTypeFinancial as TypeFinancial,
       }),
       "Category created successfully"
     );
@@ -330,6 +353,7 @@ function CategoriesSection() {
     if (!data) return;
 
     setNewCategoryDesc("");
+    setNewCategoryTypeFinancial(null);
     invalidate();
     await refresh();
   }
@@ -338,7 +362,7 @@ function CategoriesSection() {
     <Card className="p-6 space-y-4">
       <h2 className="text-xl font-bold">Categories</h2>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Input
           placeholder="Description"
           value={newCategoryDesc}
@@ -359,21 +383,61 @@ function CategoriesSection() {
           aria-describedby="category-description-error"
         />
 
+        <Select
+          value={
+            newCategoryTypeFinancial === null
+              ? undefined
+              : String(newCategoryTypeFinancial)
+          }
+          onValueChange={(value) => {
+            const nextValue = Number(value) as TypeFinancial;
+            setNewCategoryTypeFinancial(nextValue);
+            if (categoryTypeFinancialError) {
+              setCategoryTypeFinancialError(
+                Number.isNaN(nextValue) ? "Type financial is required." : null
+              );
+            }
+          }}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Type Financial" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={String(TypeFinancial.Income)}>Income</SelectItem>
+            <SelectItem value={String(TypeFinancial.Expense)}>
+              Expense
+            </SelectItem>
+            <SelectItem value={String(TypeFinancial.IncomeExpense)}>
+              IncomeExpense
+            </SelectItem>
+          </SelectContent>
+        </Select>
+
         <Button onClick={createCategory}>Create</Button>
       </div>
 
-      {categoryDescError && (
-        <p
-          id="category-description-error"
-          className="text-sm text-destructive mt-1"
-        >
-          {categoryDescError}
-        </p>
+      {(categoryDescError || categoryTypeFinancialError) && (
+        <div className="text-sm text-destructive space-y-1 mt-1">
+          {categoryDescError && (
+            <p id="category-description-error">{categoryDescError}</p>
+          )}
+          {categoryTypeFinancialError && (
+            <p id="category-typeFinancial-error">{categoryTypeFinancialError}</p>
+          )}
+        </div>
       )}
 
       {categories.map((cat) => (
-        <div key={cat.id} className="flex justify-between border rounded p-3">
-          <p>{cat.description}</p>
+        <div
+          key={cat.id}
+          className="flex items-start justify-between border rounded p-3 gap-4"
+        >
+          <div className="min-w-0">
+            <p className="font-medium">{cat.description}</p>
+            <p className="text-sm text-muted-foreground">
+              Type: {formatTypeFinancial(cat.typeFinancial)}
+            </p>
+          </div>
 
           <StatusBadge active={cat.isActive} />
         </div>
@@ -385,6 +449,8 @@ function CategoriesSection() {
 function TransactionsSection() {
   const [newTransactionDesc, setNewTransactionDesc] = React.useState("");
   const [newTransactionValue, setNewTransactionValue] = React.useState(0);
+  const [newTransactionTypeFinancial, setNewTransactionTypeFinancial] =
+    React.useState<TypeFinancial | null>(null);
   const [selectedPerson, setSelectedPerson] = React.useState<string | null>(
     null
   );
@@ -398,6 +464,8 @@ function TransactionsSection() {
   const [transactionValueError, setTransactionValueError] = React.useState<
     string | null
   >(null);
+  const [transactionTypeFinancialError, setTransactionTypeFinancialError] =
+    React.useState<string | null>(null);
   const [transactionPersonError, setTransactionPersonError] = React.useState<
     string | null
   >(null);
@@ -415,6 +483,7 @@ function TransactionsSection() {
     const valueResult = validatePositiveNumber(newTransactionValue, "Value", {
       min: 0.01,
     });
+    const typeFinancialValid = newTransactionTypeFinancial !== null;
     const personResult = validateRequired(selectedPerson, "Person");
     const categoryResult = validateRequired(selectedCategory, "Category");
 
@@ -423,6 +492,9 @@ function TransactionsSection() {
     );
     setTransactionValueError(
       valueResult.valid ? null : valueResult.message ?? null
+    );
+    setTransactionTypeFinancialError(
+      typeFinancialValid ? null : "Type financial is required."
     );
     setTransactionPersonError(
       personResult.valid ? null : personResult.message ?? null
@@ -434,6 +506,7 @@ function TransactionsSection() {
     if (
       !descResult.valid ||
       !valueResult.valid ||
+      !typeFinancialValid ||
       !personResult.valid ||
       !categoryResult.valid
     ) {
@@ -447,7 +520,7 @@ function TransactionsSection() {
       api.post("AppTransaction", {
         description: sanitizeString(newTransactionDesc),
         value: newTransactionValue,
-        typeFinancial: 1,
+        typeFinancial: newTransactionTypeFinancial as TypeFinancial,
         personId: selectedPerson,
         categoryId: selectedCategory,
       }),
@@ -458,6 +531,7 @@ function TransactionsSection() {
 
     setNewTransactionDesc("");
     setNewTransactionValue(0);
+    setNewTransactionTypeFinancial(null);
     setSelectedPerson(null);
     setSelectedCategory(null);
     invalidate();
@@ -510,6 +584,36 @@ function TransactionsSection() {
           aria-invalid={!!transactionValueError}
           aria-describedby="transaction-value-error"
         />
+
+        <Select
+          value={
+            newTransactionTypeFinancial === null
+              ? undefined
+              : String(newTransactionTypeFinancial)
+          }
+          onValueChange={(value) => {
+            const nextValue = Number(value) as TypeFinancial;
+            setNewTransactionTypeFinancial(nextValue);
+            if (transactionTypeFinancialError) {
+              setTransactionTypeFinancialError(
+                Number.isNaN(nextValue) ? "Type financial is required." : null
+              );
+            }
+          }}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Type Financial" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={String(TypeFinancial.Income)}>Income</SelectItem>
+            <SelectItem value={String(TypeFinancial.Expense)}>
+              Expense
+            </SelectItem>
+            <SelectItem value={String(TypeFinancial.IncomeExpense)}>
+              IncomeExpense
+            </SelectItem>
+          </SelectContent>
+        </Select>
 
         <Select
           value={selectedPerson ?? undefined}
@@ -570,6 +674,7 @@ function TransactionsSection() {
 
       {(transactionDescError ||
         transactionValueError ||
+        transactionTypeFinancialError ||
         transactionPersonError ||
         transactionCategoryError) && (
         <div className="text-sm text-destructive space-y-1 mt-1">
@@ -578,6 +683,11 @@ function TransactionsSection() {
           )}
           {transactionValueError && (
             <p id="transaction-value-error">{transactionValueError}</p>
+          )}
+          {transactionTypeFinancialError && (
+            <p id="transaction-typeFinancial-error">
+              {transactionTypeFinancialError}
+            </p>
           )}
           {transactionPersonError && (
             <p id="transaction-person-error">{transactionPersonError}</p>
@@ -593,6 +703,9 @@ function TransactionsSection() {
           <p className="font-semibold">{t.description}</p>
 
           <p className="text-sm text-muted-foreground">Value: {t.value}</p>
+          <p className="text-sm text-muted-foreground">
+            Type: {formatTypeFinancial(t.typeFinancial)}
+          </p>
 
           <StatusBadge active={t.isActive} />
         </div>
