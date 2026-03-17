@@ -4,8 +4,15 @@ import { api } from "../lib/api";
 import { getErrorMessage, type ApiResponse } from "../types/api";
 import type { Category } from "../types/category";
 
+export type CategorySummary = {
+  totalIncome: number;
+  totalExpense: number;
+  total: number;
+};
+
 type CategoryListState = {
   categories: Category[];
+  summary: CategorySummary | null;
   isLoading: boolean;
   error: string | null;
   ensureLoaded: () => Promise<void>;
@@ -23,6 +30,7 @@ export function CategoryListProvider({
   children: React.ReactNode;
 }) {
   const [categories, setCategories] = React.useState<Category[]>([]);
+  const [summary, setSummary] = React.useState<CategorySummary | null>(null);
   const [hasLoaded, setHasLoaded] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -36,9 +44,13 @@ export function CategoryListProvider({
       setError(null);
 
       try {
-        const response = await api.get<ApiResponse<{ data: Category[] }>>(
-          "Category?pageSize=10&page=1"
-        );
+        const response = await api.get<
+          ApiResponse<{
+            data: Category[];
+          }> & {
+            summary?: CategorySummary | null;
+          }
+        >("Category?pageSize=10&page=1");
         const payload = response.data;
 
         if (!payload.success || !payload.result) {
@@ -49,6 +61,7 @@ export function CategoryListProvider({
         }
 
         setCategories(payload.result.data ?? []);
+        setSummary(payload.summary ?? null);
         setHasLoaded(true);
       } catch {
         const message = "Failed to communicate with server";
@@ -76,19 +89,21 @@ export function CategoryListProvider({
   const invalidate = React.useCallback(() => {
     setHasLoaded(false);
     setCategories([]);
+    setSummary(null);
     setError(null);
   }, []);
 
   const value = React.useMemo(
     () => ({
       categories,
+      summary,
       isLoading,
       error,
       ensureLoaded,
       refresh,
       invalidate,
     }),
-    [categories, isLoading, error, ensureLoaded, refresh, invalidate]
+    [categories, summary, isLoading, error, ensureLoaded, refresh, invalidate]
   );
 
   return (

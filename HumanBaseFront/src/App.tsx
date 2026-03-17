@@ -51,6 +51,14 @@ import {
   useTransactionList,
 } from "./contexts/transaction-list-context";
 
+function formatCurrency(value: number | null | undefined) {
+  const safe = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "BRL",
+  }).format(safe);
+}
+
 function formatTypeFinancial(typeFinancial: TypeFinancial) {
   switch (typeFinancial) {
     case TypeFinancial.Income:
@@ -64,6 +72,24 @@ function formatTypeFinancial(typeFinancial: TypeFinancial) {
       return "Default";
   }
 }
+
+type PersonDetails = {
+  id: string;
+  name: string;
+  birthDate: string;
+  isActive: boolean;
+  totalIncome?: number | null;
+  totalExpense?: number | null;
+  total?: number | null;
+};
+
+type CategoryDetails = {
+  id: string;
+  description: string;
+  typeFinancial: TypeFinancial;
+  isActive: boolean;
+  total?: number | null;
+};
 
 export function App() {
   return (
@@ -97,10 +123,59 @@ function PersonSection() {
   const [newPersonName, setNewPersonName] = React.useState("");
   const [newPersonBirth, setNewPersonBirth] = React.useState("");
 
+  const [personFinancialById, setPersonFinancialById] = React.useState<
+    Record<string, Pick<PersonDetails, "totalIncome" | "totalExpense" | "total">>
+  >({});
+  const personFinancialInFlightRef = React.useRef<Set<string>>(new Set());
+
   const { persons, totalPages, refresh, invalidateAll } = usePersonList({
     page: pagePerson,
     search: queryPerson,
   });
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateFinancials(ids: string[]) {
+      await Promise.allSettled(
+        ids.map(async (id) => {
+          if (personFinancialInFlightRef.current.has(id)) return;
+          if (personFinancialById[id]) return;
+
+          personFinancialInFlightRef.current.add(id);
+          try {
+            const data = await handleApi(api.get(`Person/${id}`), undefined);
+            if (!data?.result || cancelled) return;
+
+            const resultArray = data.result as unknown;
+            const first = Array.isArray(resultArray)
+              ? (resultArray[0] as PersonDetails | undefined)
+              : (resultArray as PersonDetails | undefined);
+            if (!first) return;
+            if (first.id && first.id !== id) return;
+
+            setPersonFinancialById((prev) => ({
+              ...prev,
+              [id]: {
+                totalIncome: first.totalIncome ?? 0,
+                totalExpense: first.totalExpense ?? 0,
+                total: first.total ?? 0,
+              },
+            }));
+          } finally {
+            personFinancialInFlightRef.current.delete(id);
+          }
+        })
+      );
+    }
+
+    const ids = persons.map((p) => p.id).filter(Boolean);
+    void hydrateFinancials(ids);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [persons, personFinancialById]);
 
   async function deletePerson(id: string) {
     const person = persons.find((p) => p.id === id);
@@ -261,6 +336,41 @@ function PersonSection() {
                 </p>
 
                 <StatusBadge active={person.isActive} />
+
+                <div className="grid grid-cols-3 gap-3 text-sm mt-2">
+                  <div>
+                    <p className="text-muted-foreground">Total Income</p>
+                    <p className="font-medium">
+                      {personFinancialById[person.id]
+                        ? formatCurrency(personFinancialById[person.id].totalIncome)
+                        : "…"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Total Expense</p>
+                    <p className="font-medium">
+                      {personFinancialById[person.id]
+                        ? formatCurrency(personFinancialById[person.id].totalExpense)
+                        : "…"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Balance</p>
+                    {personFinancialById[person.id] ? (
+                      <p
+                        className={
+                          (personFinancialById[person.id].total ?? 0) >= 0
+                            ? "font-semibold text-emerald-600"
+                            : "font-semibold text-destructive"
+                        }
+                      >
+                        {formatCurrency(personFinancialById[person.id].total)}
+                      </p>
+                    ) : (
+                      <p className="font-medium">…</p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <Button
@@ -311,7 +421,52 @@ function CategoriesSection() {
   const [categoryTypeFinancialError, setCategoryTypeFinancialError] =
     React.useState<string | null>(null);
 
-  const { categories, refresh, invalidate } = useCategoryList();
+  const [categoryTotalById, setCategoryTotalById] = React.useState<
+    Record<string, number>
+  >({});
+  const categoryTotalInFlightRef = React.useRef<Set<string>>(new Set());
+
+  const { categories, summary, refresh, invalidate } = useCategoryList();
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateTotals(ids: string[]) {
+      await Promise.allSettled(
+        ids.map(async (id) => {
+          if (categoryTotalInFlightRef.current.has(id)) return;
+          if (typeof categoryTotalById[id] === "number") return;
+
+          categoryTotalInFlightRef.current.add(id);
+          try {
+            const data = await handleApi(api.get(`Category/${id}`), undefined);
+            if (!data?.result || cancelled) return;
+
+            const resultArray = data.result as unknown;
+            const first = Array.isArray(resultArray)
+              ? (resultArray[0] as CategoryDetails | undefined)
+              : (resultArray as CategoryDetails | undefined);
+            if (!first) return;
+            if (first.id && first.id !== id) return;
+
+            setCategoryTotalById((prev) => ({
+              ...prev,
+              [id]: first.total ?? 0,
+            }));
+          } finally {
+            categoryTotalInFlightRef.current.delete(id);
+          }
+        })
+      );
+    }
+
+    const ids = categories.map((c) => c.id).filter(Boolean);
+    void hydrateTotals(ids);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [categories, categoryTotalById]);
 
   async function createCategory() {
     const descResult = validateRequired(newCategoryDesc, "Description", {
@@ -437,11 +592,45 @@ function CategoriesSection() {
             <p className="text-sm text-muted-foreground">
               Type: {formatTypeFinancial(cat.typeFinancial)}
             </p>
+            <p className="text-sm text-muted-foreground">
+              Total:{" "}
+              {typeof categoryTotalById[cat.id] === "number"
+                ? formatCurrency(categoryTotalById[cat.id])
+                : "…"}
+            </p>
           </div>
 
           <StatusBadge active={cat.isActive} />
         </div>
       ))}
+
+      <Card className="p-4">
+        <h3 className="font-semibold mb-2">Summary</h3>
+        <div className="grid grid-cols-3 gap-3 text-sm">
+          <div>
+            <p className="text-muted-foreground">Total Income</p>
+            <p className="font-medium">{formatCurrency(summary?.totalIncome)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Total Expense</p>
+            <p className="font-medium">
+              {formatCurrency(summary?.totalExpense)}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Total Balance</p>
+            <p
+              className={
+                (summary?.total ?? 0) >= 0
+                  ? "font-semibold text-emerald-600"
+                  : "font-semibold text-destructive"
+              }
+            >
+              {formatCurrency(summary?.total)}
+            </p>
+          </div>
+        </div>
+      </Card>
     </Card>
   );
 }
