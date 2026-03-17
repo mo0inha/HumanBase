@@ -21,6 +21,7 @@ namespace Application.Query.AppTransactionQuery
                     x.Id,
                     x.Description,
                     x.Value,
+                    x.TypeFinancial,
                     x.CategoryId,
                     x.PersonId,
                     x.IsActive,
