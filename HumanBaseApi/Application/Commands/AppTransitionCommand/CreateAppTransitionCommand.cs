@@ -24,16 +24,25 @@ namespace Application.Commands.TransitionCommand
             if (_person == null)
             {
                 _response.AddErrorNotExist<Person>();
+                return;
             }
 
             if (_category == null)
             {
                 _response.AddErrorNotExist<Category>();
+                return;
+            }
+
+            if (_category.TypeFinancial != request.TypeFinancial)
+            {
+                _response.AddError("The category type must match the transaction type.");
+                return;
             }
 
             if (_person.BirthDate > DateTime.Today.AddYears(-18) && request.TypeFinancial != ETypeFinancial.Expense)
             {
                 _response.AddError("For users under 18 years of age, only expenses are accepted.");
+                return;
             }
 
         }
